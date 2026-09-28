@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ぎふ町の宝箱 - 謎解きチャレンジ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Shippori Mincho / Noto Serif JP) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Yuji+Syuku&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Shippori Mincho', serif;
+            background: radial-gradient(circle at center, #1a0f1d 0%, #08040a 100%);
+            color: #f3e5ab;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .font-yuji {
+            font-family: 'Yuji Syuku', serif;
+        }
+
+        /* 3D Visual Chest Styles */
+        .chest-container {
+            perspective: 1000px;
+            width: 280px;
+            height: 200px;
+            position: relative;
+        }
+
+        @media (min-width: 640px) {
+            .chest-container {
+                width: 360px;
+                height: 250px;
+            }
+        }
+
+        /* Particles canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        /* Chest Box CSS */
+        .chest {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+
+        /* Chest Base Body */
+        .chest-body {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 65%;
+            background: linear-gradient(135deg, #5a2a18 0%, #3b170a 100%);
+            border: 4px solid #d4af37;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        /* Chest Iron Straps */
+        .chest-strap-left, .chest-strap-right {
+            position: absolute;
+            top: 0;
+            width: 16%;
+            height: 100%;
+            background: linear-gradient(90deg, #2a2a2a, #4a4a4a, #1a1a1a);
+            border-left: 2px solid #b8860b;
+            border-right: 2px solid #b8860b;
+        }
+        .chest-strap-left { left: 20%; }
+        .chest-strap-right { right: 20%; }
+
+        /* Chest Lid */
+        .chest-lid {
+            position: absolute;
+            top: 5%;
+            width: 102%;
+            left: -1%;
+            height: 40%;
+            background: linear-gradient(135deg, #7c3a1d 0%, #4a1d0d 100%);
+            border: 4px solid #e6c656;
+            border-radius: 16px 16px 4px 4px;
+            transform-origin: top center;
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .chest-lid-strap-left, .chest-lid-strap-right {
+            position: absolute;
+            top: 0;
+            width: 16%;
+            height: 100%;
+            background: linear-gradient(90deg, #2a2a2a, #4a4a4a, #1a1a1a);
+            border-left: 2px solid #b8860b;
+            border-right: 2px solid #b8860b;
+        }
+        .chest-lid-strap-left { left: 20.5%; }
+        .chest-lid-strap-right { right: 20.5%; }
+
+        /* Lock Mechanism */
+        .chest-lock {
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 44px;
+            height: 52px;
+            background: linear-gradient(135deg, #ffd700, #b8860b);
+            border: 2px solid #fff8dc;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 25;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+
+        .chest-lock i {
+            color: #3b170a;
+            font-size: 20px;
+        }
+
+        /* Lid Open Animation State */
+        .chest.open .chest-lid {
+            transform: rotateX(-115deg) translateY(-10px);
+        }
+
+        .chest.open .chest-lock {
+            transform: translateX(-50%) translateY(20px) rotate(15deg);
+            opacity: 0;
+        }
+
+        /* Inner Glow */
+        .inner-glow {
+            position: absolute;
+            top: 30%;
+            left: 10%;
+            width: 80%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(255,215,0,0.9) 0%, rgba(255,140,0,0.6) 40%, rgba(0,0,0,0) 80%);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.8s ease 0.3s;
+            pointer-events: none;
+            z-index: 5;
+            filter: blur(8px);
+        }
+
+        .chest.open .inner-glow {
+            opacity: 1;
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            100% { transform: scale(1.15); opacity: 1; }
+        }
+
+        /* Treasure Item inside */
+        .treasure-item {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%) scale(0.3);
+            opacity: 0;
+            transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.27) 0.5s, opacity 0.8s ease 0.5s;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .chest.open .treasure-item {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-60px) scale(1);
+        }
+
+        /* Glow Rays Background when opened */
+        .light-rays {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 500px;
+            height: 500px;
+            margin-top: -250px;
+            margin-left: -250px;
+            background: repeating-conic-gradient(
+                from 0deg,
+                rgba(255, 215, 0, 0.15) 0deg 15deg,
+                transparent 15deg 30deg
+            );
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 1s ease 0.5s;
+            pointer-events: none;
+            z-index: 2;
+            animation: rotate-rays 20s linear infinite;
+        }
+
+        .chest.open ~ .light-rays {
+            opacity: 1;
+        }
+
+        @keyframes rotate-rays {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Traditional Japanese Pattern Border */
+        .washi-card {
+            background: rgba(28, 18, 33, 0.85);
+            border: 2px solid #b8860b;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.2), inset 0 0 15px rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+        }
+
+        /* Modal Animation */
+        @keyframes modalPop {
+            0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .animate-pop {
+            animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.27) forwards;
+        }
+
+        /* Custom Gold Button */
+        .btn-gold {
+            background: linear-gradient(180deg, #f3e5ab 0%, #c59b27 50%, #8a640f 100%);
+            color: #2a1500;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+            border: 1px solid #ffe89c;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.6);
+            transition: all 0.2s ease;
+        }
+
+        .btn-gold:hover {
+            background: linear-gradient(180deg, #fff2c4 0%, #d8aa32 50%, #a17616 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
+        }
+
+        .btn-gold:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between items-center p-4 select-none">
+
+    <!-- Particle Canvas Layer -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Header / Title Banner -->
+    <header class="text-center mt-4 mb-2 z-10">
+        <div class="inline-block relative">
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-widest font-yuji text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-200 drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] px-4 py-2">
+                ぎふ町探検隊　秘密の宝箱
+            </h1>
+            <div class="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent my-1"></div>
+            <p class="text-xs sm:text-sm text-amber-200/80 tracking-wider">ひらがなで合言葉を入力して封印を解き放て</p>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-xl flex flex-col items-center justify-center my-auto z-10 py-4">
+        
+        <!-- Light Rays Background behind Chest -->
+        <div class="relative flex items-center justify-center w-full my-6 min-h-[260px] sm:min-h-[300px]">
+            <div class="light-rays"></div>
+
+            <!-- 3D Chest Component -->
+            <div id="chest-wrapper" class="chest-container">
+                <div id="chest" class="chest">
+                    <!-- Lid -->
+                    <div class="chest-lid">
+                        <div class="chest-lid-strap-left"></div>
+                        <div class="chest-lid-strap-right"></div>
+                        <!-- Lock -->
+                        <div id="chest-lock" class="chest-lock">
+                            <i id="lock-icon" class="fa-solid fa-lock"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Inner Golden Glow -->
+                    <div class="inner-glow"></div>
+
+                    <!-- Treasure Content inside (Gifu Town Explorer Badge) -->
+                    <div class="treasure-item flex flex-col items-center">
+                        <div class="w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-200 to-amber-100 p-2 shadow-[0_0_50px_rgba(255,215,0,0.9)] border-4 border-yellow-300 flex items-center justify-center relative transform hover:scale-105 transition-transform">
+                            <!-- Shield/Badge Design -->
+                            <div class="w-full h-full rounded-full border-2 border-dashed border-amber-900/60 flex flex-col items-center justify-center bg-gradient-to-br from-yellow-300 via-amber-400 to-amber-600 text-amber-950 p-2 text-center shadow-inner">
+                                <i class="fa-solid fa-shield-halved text-2xl sm:text-3xl text-amber-900 mb-0.5 drop-shadow"></i>
+                                <span class="font-yuji font-black text-xs sm:text-sm leading-tight text-amber-950 tracking-wider">ぎふ町探検隊<br><span class="text-base sm:text-lg text-amber-900">バッチ</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="chest-body">
+                        <div class="chest-strap-left"></div>
+                        <div class="chest-strap-right"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Form Section -->
+        <div class="w-full px-4">
+            <div class="washi-card rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600"></div>
+
+                <form id="password-form" class="space-y-4" onsubmit="return false;">
+                    <div class="flex flex-col space-y-2">
+                        <label for="password-input" class="text-sm sm:text-base text-amber-200 font-bold tracking-wider flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-key text-yellow-500"></i> ひらがなで合言葉を入力してください
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                id="password-input" 
+                                placeholder="例：おだのぶなが"
+                                autocomplete="off"
+                                class="w-full px-4 py-3 bg-black/60 border-2 border-amber-500/50 rounded-xl text-center text-lg sm:text-xl text-yellow-200 placeholder-amber-700/60 focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/30 transition-all font-yuji"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button 
+                            type="submit" 
+                            id="unlock-btn"
+                            class="btn-gold w-full py-3.5 px-6 rounded-xl text-lg font-bold tracking-widest flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                            <i class="fa-solid fa-unlock-keyhole"></i>
+                            <span>鍵を開ける</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Sound Control Toggle -->
+                <div class="mt-4 flex items-center justify-end">
+                    <button id="sound-toggle" class="text-xs text-amber-400/70 hover:text-amber-300 flex items-center gap-1 transition-colors">
+                        <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+                        <span id="sound-label">効果音 ON</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Failure Modal Overlay -->
+    <div id="failure-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="washi-card max-w-sm w-full rounded-2xl p-6 text-center border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-pop">
+            <div class="w-16 h-16 bg-red-950/80 border-2 border-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-red-400 text-2xl">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-red-400 mb-2 font-yuji">封印解除 失敗</h3>
+            <p class="text-amber-100 text-lg mb-6 leading-relaxed">
+                「残念！もう一回考えてみよう」
+            </p>
+            <button 
+                id="close-failure-btn"
+                class="w-full py-3 bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 text-white font-bold rounded-xl shadow-lg transition-all"
+            >
+                もう一度挑戦する
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Modal Overlay / Display -->
+    <div id="success-overlay" class="fixed inset-0 bg-black/40 pointer-events-none z-40 flex flex-col items-center justify-between p-6 opacity-0 transition-opacity duration-700">
+        <!-- Top Banner -->
+        <div id="success-banner" class="mt-8 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 p-0.5 rounded-2xl shadow-[0_0_40px_rgba(255,215,0,0.8)] transform -translate-y-10 transition-transform duration-700">
+            <div class="bg-black/90 px-8 py-4 rounded-[15px] text-center">
+                <h2 class="text-4xl sm:text-6xl font-black font-yuji tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-400 to-yellow-100 animate-pulse">
+                    ✨ お宝GET！ ✨
+                </h2>
+                <p class="text-amber-300 mt-2 text-sm sm:text-base">見事、秘宝の封印を解き明かしました！</p>
+            </div>
+        </div>
+
+        <!-- Bottom Reset Action -->
+        <div class="mb-8 pointer-events-auto">
+            <button 
+                id="reset-btn"
+                class="btn-gold py-4 px-8 rounded-full text-lg sm:text-xl font-extrabold tracking-wider shadow-2xl flex items-center gap-3"
+            >
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>宝箱を閉じる (もう一度あそぶ)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-amber-500/50 py-3 z-10">
+        <p>ふれあいフェスタ2026　ゴールポイント</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Valid Passwords List
+        const VALID_PASSWORDS = [
+            "さいとうどうさん",
+            "のうひめ",
+            "こあんちゃん",
+            "ふるさとだいすき"
+        ];
+
+        // Sound Effects (Enhanced Web Audio API Synthesizer)
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    audioCtx = new AudioContext();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Basic Click Sound
+        function playClickSound() {
+            if (!soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.05);
+
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.05);
+        }
+
+        // Long Low Buzzer Sound for Incorrect Answer ("ブーーー")
+        function playErrorSound() {
+            if (!soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            const now = ctx.currentTime;
+            const duration = 1.3; // 長めのブザー音（1.3秒）
+
+            // 2つの波形を少しずらして重ねることで濁ったレトロなブザー音を作成
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc1.type = 'sawtooth';
+            osc2.type = 'sawtooth';
+
+            // 110Hz（低いラ）と116Hzでうなりを生む
+            osc1.frequency.setValueAtTime(110, now);
+            osc2.frequency.setValueAtTime(116, now);
+
+            // 途中で少しピッチが下がるようなリアルなブザー感
+            osc1.frequency.linearRampToValueAtTime(105, now + duration);
+            osc2.frequency.linearRampToValueAtTime(111, now + duration);
+
+            // 音量のエンベロープ設定
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + 0.05); // 素早い立ち上がり
+            gain.gain.setValueAtTime(0.3, now + duration - 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration); // 最後に消える
+
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + duration);
+            osc2.stop(now + duration);
+        }
+
+        // Grand Flashy Success Fanfare
+        function playChestOpenSound() {
+            if (!soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            const now = ctx.currentTime;
+
+            // 1. Heavy Lock & Opening Creak Sound
+            const unlockOsc = ctx.createOscillator();
+            const unlockGain = ctx.createGain();
+            unlockOsc.type = 'triangle';
+            unlockOsc.frequency.setValueAtTime(150, now);
+            unlockOsc.frequency.linearRampToValueAtTime(400, now + 0.2);
+            unlockOsc.frequency.exponentialRampToValueAtTime(800, now + 0.4);
+
+            unlockGain.gain.setValueAtTime(0.3, now);
+            unlockGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+            unlockOsc.connect(unlockGain);
+            unlockGain.connect(ctx.destination);
+            unlockOsc.start(now);
+            unlockOsc.stop(now + 0.5);
+
+            // 2. Sparkling Glissando Chime Arpeggio (Rising Magic)
+            const sparkNotes = [
+                523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98, 2093.00, 2637.02
+            ]; // C5 to E7
+            sparkNotes.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+
+                const startTime = now + 0.1 + (idx * 0.05);
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.18, startTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(startTime);
+                osc.stop(startTime + 0.4);
+            });
+
+            // 3. Fireworks Cannon Pop (Low-frequency impact noise burst)
+            setTimeout(() => {
+                playFireworksPop(ctx);
+            }, 350);
+
+            // 4. Triumphant Brass & Synth Fanfare Chords
+            // Chord 1: C Major (C4, E4, G4, C5)
+            playBrassChord(ctx, [261.63, 329.63, 392.00, 523.25], now + 0.45, 0.25);
+            // Chord 2: F Major (F4, A4, C5, F5)
+            playBrassChord(ctx, [349.23, 440.00, 523.25, 698.46], now + 0.72, 0.25);
+            // Chord 3: G Major (G4, B4, D5, G5)
+            playBrassChord(ctx, [392.00, 493.88, 587.33, 783.99], now + 0.98, 0.3);
+            // Grand Final Chord: High C Major Victory Blast (C4, G4, C5, E5, G5, C6)
+            playBrassChord(ctx, [261.63, 392.00, 523.25, 659.25, 783.99, 1046.50], now + 1.3, 1.8);
+            
+            // Sparkling Shimmer trailing behind the final chord
+            setTimeout(() => {
+                playSparkleShimmer(ctx);
+            }, 1300);
+        }
+
+        // Helper: Brass Synth Chord Generator
+        function playBrassChord(ctx, frequencies, startTime, duration) {
+            frequencies.forEach(freq => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                // Layer sawtooth with square wave for rich brass tone
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, startTime);
+
+                // Attack / Decay envelope
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.12, startTime + 0.04);
+                gain.gain.setValueAtTime(0.1, startTime + duration - 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            });
+        }
+
+        // Helper: Fireworks / Confetti Cannon Impact Noise
+        function playFireworksPop(ctx) {
+            const bufferSize = ctx.sampleRate * 0.4;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, ctx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.4);
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+
+            noise.start(ctx.currentTime);
+        }
+
+        // Helper: Sparkle Shimmer Effect
+        function playSparkleShimmer(ctx) {
+            const numSparks = 12;
+            const now = ctx.currentTime;
+            for (let i = 0; i < numSparks; i++) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+
+                // Random high pitch sparkles
+                const freq = 1200 + Math.random() * 2000;
+                osc.frequency.setValueAtTime(freq, now + i * 0.08);
+
+                gain.gain.setValueAtTime(0, now + i * 0.08);
+                gain.gain.linearRampToValueAtTime(0.08, now + i * 0.08 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.25);
+            }
+        }
+
+        // Particle System Setup
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor(x, y, isExplosion = false) {
+                this.x = x;
+                this.y = y;
+                this.isExplosion = isExplosion;
+                
+                if (isExplosion) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 8 + 2;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed - 2;
+                    this.size = Math.random() * 6 + 3;
+                    this.gravity = 0.15;
+                    this.drag = 0.96;
+                } else {
+                    // Floating ambient sparkles
+                    this.vx = (Math.random() - 0.5) * 0.8;
+                    this.vy = -Math.random() * 1.5 - 0.5;
+                    this.size = Math.random() * 3 + 1;
+                    this.gravity = 0;
+                    this.drag = 1;
+                }
+
+                this.colors = ['#ffd700', '#ffae00', '#ffffff', '#ffe4b5', '#e6c656'];
+                this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+                this.alpha = 1;
+                this.decay = Math.random() * 0.02 + 0.008;
+            }
+
+            update() {
+                this.vx *= this.drag;
+                this.vy *= this.drag;
+                this.vy += this.gravity;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Glow effect
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.restore();
+            }
+        }
+
+        let isChestOpened = false;
+
+        function spawnAmbientParticles() {
+            if (isChestOpened && Math.random() < 0.4) {
+                const chestRect = document.getElementById('chest-wrapper').getBoundingClientRect();
+                const x = chestRect.left + chestRect.width / 2 + (Math.random() - 0.5) * 100;
+                const y = chestRect.top + chestRect.height / 2;
+                particles.push(new Particle(x, y, false));
+            }
+        }
+
+        function triggerTreasureExplosion() {
+            const chestRect = document.getElementById('chest-wrapper').getBoundingClientRect();
+            const centerX = chestRect.left + chestRect.width / 2;
+            const centerY = chestRect.top + chestRect.height / 3;
+
+            for (let i = 0; i < 120; i++) {
+                particles.push(new Particle(centerX, centerY, true));
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            spawnAmbientParticles();
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // DOM Elements
+        const passwordInput = document.getElementById('password-input');
+        const passwordForm = document.getElementById('password-form');
+        const chest = document.getElementById('chest');
+        const lockIcon = document.getElementById('lock-icon');
+        const failureModal = document.getElementById('failure-modal');
+        const closeFailureBtn = document.getElementById('close-failure-btn');
+        const successOverlay = document.getElementById('success-overlay');
+        const successBanner = document.getElementById('success-banner');
+        const resetBtn = document.getElementById('reset-btn');
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundIcon = document.getElementById('sound-icon');
+        const soundLabel = document.getElementById('sound-label');
+
+        // Text Normalizer (Trims whitespace, handles full-width/half-width variations)
+        function normalizeText(text) {
+            if (!text) return "";
+            return text
+                .trim()
+                .replace(/\s+/g, '') // Remove all spaces
+                .toLowerCase();
+        }
+
+        // Check Password Handler
+        function handleUnlock() {
+            const rawValue = passwordInput.value;
+            const normalizedValue = normalizeText(rawValue);
+
+            if (!normalizedValue) {
+                showFailureModal();
+                return;
+            }
+
+            // Check if matches ANY of the valid passwords
+            const isMatch = VALID_PASSWORDS.some(pwd => normalizeText(pwd) === normalizedValue);
+
+            if (isMatch) {
+                openTreasureChest();
+            } else {
+                showFailureModal();
+            }
+        }
+
+        // Success Action
+        function openTreasureChest() {
+            isChestOpened = true;
+            playChestOpenSound();
+
+            // Animate Lock & Chest
+            lockIcon.className = "fa-solid fa-unlock text-yellow-900";
+            chest.classList.add('open');
+
+            // Trigger Confetti Explosion
+            setTimeout(() => {
+                triggerTreasureExplosion();
+            }, 300);
+
+            // Display Success Overlay & Banner
+            setTimeout(() => {
+                successOverlay.classList.remove('pointer-events-none');
+                successOverlay.classList.remove('opacity-0');
+                successBanner.classList.remove('-translate-y-10');
+            }, 800);
+        }
+
+        // Failure Action
+        function showFailureModal() {
+            playErrorSound();
+            failureModal.classList.remove('hidden');
+        }
+
+        function hideFailureModal() {
+            playClickSound();
+            failureModal.classList.add('hidden');
+            passwordInput.focus();
+            passwordInput.select();
+        }
+
+        // Reset Chest Action
+        function resetGame() {
+            playClickSound();
+            isChestOpened = false;
+
+            // Close UI overlays
+            successOverlay.classList.add('pointer-events-none', 'opacity-0');
+            successBanner.classList.add('-translate-y-10');
+
+            // Close Chest Model
+            chest.classList.remove('open');
+            lockIcon.className = "fa-solid fa-lock text-amber-950";
+
+            // Reset Input
+            passwordInput.value = "";
+            passwordInput.focus();
+        }
+
+        // Event Listeners
+        passwordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleUnlock();
+        });
+
+        closeFailureBtn.addEventListener('click', hideFailureModal);
+        resetBtn.addEventListener('click', resetGame);
+
+        // Sound Toggle Handler
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundIcon.className = "fa-solid fa-volume-high";
+                soundLabel.textContent = "効果音 ON";
+                playClickSound();
+            } else {
+                soundIcon.className = "fa-solid fa-volume-xmark";
+                soundLabel.textContent = "効果音 OFF";
+            }
+        });
+
+        // Initialize Focus
+        window.addEventListener('DOMContentLoaded', () => {
+            passwordInput.focus();
+        });
+    </script>
+</body>
+</html>
